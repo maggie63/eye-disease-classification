@@ -15,7 +15,6 @@ if __name__ == '__main__':
     from tempfile import TemporaryDirectory
 
     cudnn.benchmark = True
-    plt.ion()  # interactive mode
 
     # LOAD DATA
     # Data augmentation and normalization for training
@@ -45,10 +44,16 @@ if __name__ == '__main__':
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_names = image_datasets['train'].classes
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)} is available.")
+        device = torch.device("cuda")
+    else:
+        print("No GPU available. Training will run on CPU.")
+        device = torch.device("cpu")
 
     # VISUALIZE IMAGES
+
+
     def imshow(inp, title=None):
         """Display image for Tensor."""
         inp = inp.numpy().transpose((1, 2, 0))
@@ -75,7 +80,6 @@ if __name__ == '__main__':
         f"Class count: {image_datasets['train'].targets.count(0)}, {image_datasets['train'].targets.count(1)}, {image_datasets['train'].targets.count(2)}")
     print(f"Samples:", len(image_datasets["train"]))
     print(f"First sample: {image_datasets['train'].samples[0]}")
-
 
     # TRAINING
 
@@ -147,10 +151,14 @@ if __name__ == '__main__':
 
             # load best model weights
             model.load_state_dict(torch.load(best_model_params_path))
+
+            torch.save(model, 'model.pth')
+
         return model
 
 
     # VISUALIZE MODEL PREDICTIONS
+
 
     def visualize_model(model, num_images=6):
 
@@ -179,6 +187,7 @@ if __name__ == '__main__':
                         return
             model.train(mode=was_training)
 
+
     model_ft = models.resnet50(weights='IMAGENET1K_V2')
     num_ftrs = model_ft.fc.in_features
     # Here the size of each output sample is set to 2.
@@ -195,7 +204,12 @@ if __name__ == '__main__':
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-    model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                           num_epochs=25)
+    try:
+        model_ft = torch.load('model.pth', weights_only=False)
+        model_ft.eval()
+    except FileNotFoundError:
+        print("No such file exists, training model")
+        model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
+                               num_epochs=25)
 
     visualize_model(model_ft)
