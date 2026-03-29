@@ -1,0 +1,5 @@
+class,train_count,val_count,total
+cataract,831,207,1038
+diabetic_retinopathy,879,219,1098
+glaucoma,806,201,1007
+normal,860,214,1074
