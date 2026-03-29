@@ -1,0 +1,5 @@
+true \ pred,cataract,diabetic_retinopathy,glaucoma,normal
+cataract,192,2,5,8
+diabetic_retinopathy,2,211,4,2
+glaucoma,9,5,172,15
+normal,7,4,15,188

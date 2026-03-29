@@ -12,11 +12,12 @@
 #   make clean      — remove all generated outputs (keeps raw data)
 #
 # Prerequisites:
-#   conda activate EyeClassificationPP   (or your env name)
+#   conda activate EyeClassificationPP
 #   quarto installed  (https://quarto.org)
+#   pip install jupyter  (needed for quarto to run python chunks)
 
 PYTHON      = python
-QUARTO      = quarto
+QUARTO = C:/PROGRA~1/Quarto/bin/quarto.cmd
 
 # Directories
 DATA_RAW    = data/raw
@@ -35,7 +36,7 @@ MODEL_PTH        = $(MODELS)/model.pth
 TRAINING_CURVES  = $(FIGURES)/training_curves.png
 CONFUSION_PNG    = $(FIGURES)/confusion_matrix.png
 DIST_PNG         = $(FIGURES)/class_distribution.png
-REPORT_HTML      = $(REPORTS)/eye_disease_classification_report.html
+REPORT_HTML      = $(REPORTS)/eye_classifier.html
 
 
 # ===========================================================================
@@ -56,8 +57,6 @@ figures: $(TRAINING_CURVES) $(CONFUSION_PNG) $(DIST_PNG)
 
 report: $(REPORT_HTML)
 
-conda-lock.yml: environment.yml
-	conda-lock lock --file environment.yml --platform osx-arm64
 
 # ===========================================================================
 # Step 1 — Split raw data
@@ -120,12 +119,13 @@ $(REPORT_HTML): reports/eye_classifier.qmd \
 
 
 # ===========================================================================
-# Clean
+# Clean — uses Python so it works on both Windows and Mac/Linux
 # ===========================================================================
 
 clean:
-	rm -rf results/tables results/figures results/models
-	rm -f  $(REPORT_HTML)
+	$(PYTHON) -c "import shutil, os; \
+		[shutil.rmtree(p, ignore_errors=True) for p in ['results/tables','results/figures','results/models']]; \
+		os.remove('$(REPORT_HTML)') if os.path.exists('$(REPORT_HTML)') else None"
 
 help:
 	@echo ""
