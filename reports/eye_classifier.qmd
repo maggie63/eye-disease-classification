@@ -14,7 +14,12 @@ format:
     code-fold: true
     code-tools: true
     embed-resources: true
+  pdf:
+    toc: true
+    number-sections: true
+    fig-cap-location: bottom
 bibliography: references.bib
+jupyter: python3
 execute:
   echo: false
   warning: false
@@ -44,9 +49,9 @@ for follow-up before irreversible damage occurs.
 
 Deep convolutional neural networks (CNNs) have achieved expert-level performance
 on several medical imaging benchmarks [@gulshan2016retinopathy;
-@esteva2017dermatologist]. Transfer learning---initialising a network with
+@esteva2017dermatologist]. Transfer learning (initialising a network with
 weights learned on a large general-purpose dataset such as ImageNet and then
-fine-tuning on a smaller domain-specific dataset---has been shown to substantially
+fine-tuning on a smaller domain-specific dataset) has been shown to substantially
 reduce the amount of labelled data required to achieve strong performance
 [@pan2010survey]. ResNet-50 [@he2016resnet], a 50-layer residual network, is a
 particularly well-studied backbone for medical image tasks because its skip
@@ -138,45 +143,33 @@ training loss decreases.
 
 ```{python}
 #| label: fig-curves
-#| fig-cap: "Training and validation accuracy (left) and loss (right) across 25 epochs. Curves are illustrative placeholders; replace with values saved from your training run."
+#| fig-cap: "Training and validation accuracy (left) and loss (right) across 25 epochs."
 #| echo: false
 
+import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
-# ---------------------------------------------------------------
-# Replace these arrays with the actual train_acc, val_acc,
-# train_loss, val_loss lists collected during your training run.
-# ---------------------------------------------------------------
-np.random.seed(42)
-epochs = np.arange(1, 26)
+df = pd.read_csv("../results/tables/training_history.csv")
 
-# Simulated curves — swap in your real logged values
-train_acc = np.clip(0.55 + 0.018 * epochs + np.random.normal(0, 0.01, 25), 0, 1)
-val_acc   = np.clip(0.50 + 0.016 * epochs + np.random.normal(0, 0.02, 25), 0, 1)
-train_loss = np.clip(0.80 - 0.025 * epochs + np.random.normal(0, 0.02, 25), 0.1, 1)
-val_loss   = np.clip(0.90 - 0.022 * epochs + np.random.normal(0, 0.03, 25), 0.1, 1)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
-fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+ax1.plot(df["epoch"], df["train_acc"], label="Train", marker="o", markersize=3)
+ax1.plot(df["epoch"], df["val_acc"],   label="Val",   marker="o", markersize=3, linestyle="--")
+ax1.set_xlabel("Epoch")
+ax1.set_ylabel("Accuracy")
+ax1.set_title("Accuracy")
+ax1.legend()
+ax1.grid(alpha=0.3)
 
-axes[0].plot(epochs, train_acc, label="Train", marker="o", markersize=3)
-axes[0].plot(epochs, val_acc,   label="Val",   marker="o", markersize=3, linestyle="--")
-axes[0].set_xlabel("Epoch")
-axes[0].set_ylabel("Accuracy")
-axes[0].set_title("Accuracy")
-axes[0].legend()
-axes[0].grid(alpha=0.3)
-
-axes[1].plot(epochs, train_loss, label="Train", marker="o", markersize=3)
-axes[1].plot(epochs, val_loss,   label="Val",   marker="o", markersize=3, linestyle="--")
-axes[1].set_xlabel("Epoch")
-axes[1].set_ylabel("Loss")
-axes[1].set_title("Cross-Entropy Loss")
-axes[1].legend()
-axes[1].grid(alpha=0.3)
+ax2.plot(df["epoch"], df["train_loss"], label="Train", marker="o", markersize=3)
+ax2.plot(df["epoch"], df["val_loss"],   label="Val",   marker="o", markersize=3, linestyle="--")
+ax2.set_xlabel("Epoch")
+ax2.set_ylabel("Loss")
+ax2.set_title("Cross-Entropy Loss")
+ax2.legend()
+ax2.grid(alpha=0.3)
 
 plt.tight_layout()
-plt.savefig("training_curves.png", dpi=150, bbox_inches="tight")
 plt.show()
 ```
 
@@ -191,47 +184,84 @@ plt.show()
 
 | Metric | Value |
 |--------|-------|
-| Best Validation Accuracy | *replace with your value* |
-| Final Validation Loss | *replace with your value* |
-| Training Time | *replace with your value* |
+| Best Validation Accuracy | 90.73% (epoch 22) |
+| Final Validation Loss | 0.2723 |
+| Best Validation Loss | 0.2522 (epoch 22) |
+| Training Epochs | 25 |
 
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|----|
+| Cataract | 0.914 | 0.928 | 0.921 |
+| Diabetic retinopathy | 0.951 | 0.964 | 0.957 |
+| Glaucoma | 0.878 | 0.856 | 0.867 |
+| Normal | 0.883 | 0.879 | 0.881 |
+| **Overall** | | | **0.907** |
 : Summary of model performance on the held-out validation set. {#tbl-results}
 
 ## Discussion
 
-The results suggest that ResNet-50 transfer learning is a viable approach for
-binary eye disease classification from fundus images. The steady convergence of
-training and validation accuracy indicates that the model is learning meaningful
-visual features rather than simply memorising the training set. The step learning
-rate schedule appears to provide an additional boost: accuracy often increases
-noticeably after epochs 7 and 14, corresponding to the two scheduled learning
-rate reductions.
+The fine-tuned ResNet-50 model achieved an overall validation accuracy of 90.73% across
+four disease categories, with a best validation loss of 0.2522 at epoch 22. These results
+suggest that transfer learning from ImageNet is an effective strategy for retinal fundus
+image classification, even without domain-specific pre-training or custom augmentation
+beyond standard random crops and horizontal flips.
 
-**Limitations.** Several aspects of this analysis limit how broadly these
-findings can be interpreted. First, the batch size of 4 was chosen to accommodate
-CPU training; larger batches (16–64) would stabilise gradient estimates and
-potentially improve convergence speed on GPU hardware. Second, the model is
-evaluated only on accuracy and loss; clinical deployment would also require
-sensitivity, specificity, and AUC to properly assess the trade-off between false
-negatives (missed disease) and false positives (unnecessary referral). Third, no
-external test set was held out beyond the validation split used during training,
-so there is a risk of inadvertent hyperparameter overfitting to the validation
-set.
+### Per-class performance
 
-**Future directions.** Several straightforward extensions could improve the
-analysis:
+Performance varied meaningfully across classes in ways that are clinically interpretable.
+Diabetic retinopathy was the most accurately classified condition (F1 = 0.957), likely
+because it produces visually distinctive features such as microaneurysms, haemorrhages,
+and exudates that are well-separated from the other classes in feature space. Cataract
+classification was similarly strong (F1 = 0.921), as lens opacity produces a characteristic
+diffuse brightness pattern that is distinct from retinal pathologies.
 
-- **Multi-class extension.** The final layer is currently parameterised for 2
-  classes but can be generalised to `nn.Linear(num_ftrs, len(class_names))` to
-  support additional disease categories (e.g., diabetic retinopathy grades).
-- **Stronger augmentation.** Colour jitter, random rotations, and Gaussian blur
-  are commonly used for fundus images and may further reduce overfitting.
-- **Grad-CAM visualisation.** Producing class activation maps [@selvaraju2017gradcam]
-  would provide interpretable evidence of which retinal regions drive predictions,
-  which is important for clinical trust.
-- **Uncertainty quantification.** Monte Carlo dropout or ensembling could provide
-  prediction confidence scores, allowing the model to flag uncertain cases for
-  human review.
+Glaucoma was the most challenging class (F1 = 0.867), with 15 of 201 glaucoma cases
+misclassified as normal, the highest single source of error in the confusion matrix. This
+is clinically significant: a false negative for glaucoma means a patient with the condition
+is told they are healthy, delaying treatment during a window where vision loss is still
+preventable. The visual similarity between early glaucoma and healthy retinas (both
+characterised by the absence of obvious lesions, with glaucoma differentiated primarily by
+optic disc cupping) likely explains why this boundary is hardest for the model to learn
+with limited augmentation.
+
+### Training dynamics
+
+Validation accuracy rose steeply in the first 10 epochs, reaching approximately 89.7% by
+epoch 10, then continued to improve gradually to a peak of 90.73% at epoch 22. Crucially,
+validation loss tracks training loss throughout, there is no point at which validation
+loss begins rising while training loss continues to fall, which would indicate overfitting.
+This suggests the model generalises well to unseen images at this dataset size, and that
+the StepLR scheduler (decaying the learning rate by 0.1 at epochs 7 and 14) provided a
+useful fine-grained refinement phase after the initial fast convergence.
+
+### Limitations
+
+Several aspects of this analysis limit how broadly these findings should be interpreted.
+First, the train/val split is random rather than patient-stratified, if multiple images
+from the same patient appear in both splits, the model may have partially memorised
+patient-level features rather than learning generalised disease characteristics. Second,
+no external held-out test set was used; the validation accuracy reported here influenced
+checkpoint selection (the best-performing epoch was saved), meaning the reported 90.73%
+is slightly optimistic as a true generalisation estimate. Third, the dataset represents
+a single imaging source and may not generalise to fundus photographs taken with different
+cameras, lighting conditions, or patient demographics.
+
+The glaucoma false-negative rate is the most pressing limitation from a clinical
+standpoint. Deploying a model with this error profile as a screening tool would require
+pairing it with a low-confidence threshold that flags uncertain cases for human review,
+rather than treating its output as a binary pass/fail.
+
+### Future directions
+
+Several extensions would strengthen both the model and the analysis. Grad-CAM
+visualisations [@selvaraju2017gradcam] would reveal which retinal regions drive each
+prediction, providing interpretability evidence that is essential before any clinical
+application. Stronger augmentation (colour jitter, random rotation, and Gaussian blur, e.g.)
+is standard practice for fundus images and may particularly help the glaucoma boundary by
+exposing the model to more variation in optic disc appearance. Finally, replacing the
+single val split with k-fold cross-validation would give a more reliable estimate of
+generalisation performance and reduce sensitivity to the particular random seed used for
+splitting.
 
 ## Conclusion
 
@@ -274,7 +304,7 @@ eye-disease-classification/
 │   └── tables/
 │       └── model_performance.csv
 ├── reports/
-│   └── eye_disease_classification_report.qmd   ← this file
+│   └── eyeclassifier.qmd   ← this file
 ├── environment.yml                              # conda environment
 ├── Makefile                                     # build pipeline
 └── README.md

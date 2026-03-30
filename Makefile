@@ -17,7 +17,7 @@
 #   pip install jupyter  (needed for quarto to run python chunks)
 
 PYTHON      = python
-QUARTO = C:/PROGRA~1/Quarto/bin/quarto.cmd
+QUARTO = quarto
 
 # Directories
 DATA_RAW    = data/raw
@@ -111,7 +111,11 @@ $(TRAINING_CURVES) $(CONFUSION_PNG) $(DIST_PNG): src/plot_results.py \
 # Step 5 — Render Quarto report
 # ===========================================================================
 
-$(REPORT_HTML): reports/eye_classifier.qmd \
+REPORT_PDF = $(REPORTS)/eye_classifier.pdf
+
+report: $(REPORT_HTML) $(REPORT_PDF)
+
+$(REPORT_HTML) $(REPORT_PDF): reports/eye_classifier.qmd \
 		reports/references.bib \
 		$(TRAINING_CURVES) $(CONFUSION_PNG) $(DIST_PNG) \
 		$(PERFORMANCE_CSV) $(SUMMARY_CSV)
@@ -125,8 +129,7 @@ $(REPORT_HTML): reports/eye_classifier.qmd \
 clean:
 	$(PYTHON) -c "import shutil, os; \
 		[shutil.rmtree(p, ignore_errors=True) for p in ['results/tables','results/figures','results/models']]; \
-		os.remove('$(REPORT_HTML)') if os.path.exists('$(REPORT_HTML)') else None"
-
+		[os.remove(f) if os.path.exists(f) else None for f in ['$(REPORT_HTML)', '$(REPORT_PDF)']]"
 help:
 	@echo ""
 	@echo "Available targets:"
